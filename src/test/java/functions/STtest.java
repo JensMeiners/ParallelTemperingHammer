@@ -6,8 +6,8 @@ public class STtest {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		SimulatedTempering st = new SimulatedTempering(5, 30);
-		st.run();
+		//SimulatedTempering st = new SimulatedTempering(5, 30);
+		//st.run();
 		
 //		
 //		Random r = new Random();

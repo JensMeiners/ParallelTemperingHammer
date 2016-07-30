@@ -1,6 +1,6 @@
 package util;
 
-import core.Worker;
+import core.TemperingWoker;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.configuration.Configuration;
@@ -19,6 +19,6 @@ public class JobFunction extends RichMapFunction<Integer, String> {
 
     @Override
     public String map(Integer id) throws Exception {
-        return new Worker(id, runtimeContext).work();
+        return new TemperingWoker(id, runtimeContext, ParamGenerator.getBetaForID(id)).run();
     }
 }

@@ -1,8 +1,11 @@
 package core;
 
+import common.Globals;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
+import org.apache.flink.api.java.operators.MapOperator;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import util.JobFunction;
@@ -28,10 +31,13 @@ public class Main {
         conf.setInteger(ConfigConstants.TASK_MANAGER_NUM_TASK_SLOTS, NUM_CORES_PER_WORKER);
         env = ExecutionEnvironment.createLocalEnvironment(conf);
         env.setParallelism(NUM_JOBS);
+        Globals.MAX_ID = NUM_JOBS;
+        Globals.MIN_ID = 1;
 
         // create list of ID's
-        List<Integer> ids = IntStream.rangeClosed(1, NUM_JOBS).boxed()
+        List<Integer> ids = IntStream.rangeClosed(Globals.MIN_ID, Globals.MAX_ID).boxed()
                 .collect(Collectors.toList());
+        System.out.println("ids generated = " + ids);
 
         env.getConfig().setGlobalJobParameters(new JobParameters(ids));
 
@@ -44,7 +50,8 @@ public class Main {
         // map ID's using custom mapping function.
         // parallel tempering is applied in this mapping phase
         try {
-            List list = data.map(new JobFunction()).collect();
+            DataSet map = data.map(new JobFunction()).setParallelism(NUM_JOBS);
+            List list = map.collect();
             System.out.println("list = " + list);
         } catch (Exception e) {
             e.printStackTrace();

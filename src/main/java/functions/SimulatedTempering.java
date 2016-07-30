@@ -1,59 +1,39 @@
 package functions;
 
+
 public class SimulatedTempering {
 
-	private SpectralSample currentSample;
-	private double beta = 1.0; // tempering temperatur
 
-	public SimulatedTempering(double initTemperatur, int initFrequency) {
-		currentSample = new SpectralSample(initTemperatur, initFrequency);
-	}
-
-	public void run() { // void??
-		int t = 0;
-		while (true) {
-			// obtain new Sample
-			SpectralSample newSample = new SpectralSample(currentSample);
-
-			// compute ratio
-			double ratio = getRatio(newSample, currentSample);
-
-			// acceptance check
-			if (Math.random() <= ratio) {
-				currentSample = newSample;
-//				System.out.println("========   NEW SAMPLE   ======");
-				System.out.println("f=" + currentSample.getFrequency() + ",  T=" + currentSample.getTemperatur());
-			}
-
-			// TODO logging etc
-			// log iteration number, samples, acceptance rate, ...
-			
-			t++;
-			if(t>1000) return;
-			
-//			System.out.println("f=" + currentSample.getFrequency() + ",  T=" + currentSample.getTemperatur());
-		}
-	}
-
-	/**
+    /**
 	 * if ratio is smaller than a U ~ U(0,1) accept the new sample
 	 * 
 	 * 
 	 * maybe the old/current sample is still available?
 	 * 
 	 */
-	public double getRatio(SpectralSample newSample, SpectralSample currentSample) {
-		double newSampleProbability = getPrior(newSample) * tempering(newSample);
-		double currentSampleProbability = getPrior(currentSample) * tempering(currentSample);
+	public static double getRatio(SpectralSample newSample, SpectralSample currentSample, Double beta) {
 
+        if(testRanges(newSample)==false) return 0.0;
+
+		double newSampleProbability = getPrior(newSample) * tempering(newSample, beta);
+		double currentSampleProbability = getPrior(currentSample) * tempering(currentSample, beta);
+
+        if (currentSampleProbability == 0) return 1;
 		return newSampleProbability / currentSampleProbability;
 	}
 
-	private double tempering(SpectralSample sample) {
+    private static boolean testRanges(SpectralSample sample) {
+        return sample.getTemperatur() < SpectralConstants.tMax
+                && sample.getTemperatur() > SpectralConstants.tMin
+                && sample.getFrequency() > 0
+                && sample.getFrequency() < SpectralConstants.N;
+    }
+
+    public static double tempering(SpectralSample sample, Double beta) {
 		return Math.exp(beta * Math.log(getPosterior(sample)));
 	}
 
-	private double getPosterior(SpectralSample sample) {
+	private static double getPosterior(SpectralSample sample) {
 		double modelError = 0.0;
 		for (int i = 0; i < SpectralConstants.data.length; i++) {
 			modelError += Math.pow(
@@ -65,15 +45,15 @@ public class SimulatedTempering {
 				* Math.exp(-(modelError / 2 * Math.pow(SpectralConstants.sigma, 2)));
 	}
 
-	private double getPrior(SpectralSample sample) {
+	private static double getPrior(SpectralSample sample) {
 		return getUniformPrior(sample.getFrequency()) * getJeffreysPrior(sample.getTemperatur());
 	}
 
-	private double getJeffreysPrior(double temperatur) {
+	private static double getJeffreysPrior(double temperatur) {
 		return 1 / (temperatur * Math.log(SpectralConstants.tMax / SpectralConstants.tMin));
 	}
 
-	private double getUniformPrior(int frequency) {
+	private static double getUniformPrior(int frequency) {
 		return 1 / (SpectralConstants.tMax - SpectralConstants.tMin);
 	}
 }
