@@ -8,6 +8,7 @@ import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.operators.MapOperator;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import util.ElasticLogger;
 import util.JobFunction;
 import util.JobParameters;
 
@@ -20,7 +21,7 @@ import java.util.stream.IntStream;
  */
 public class Main {
     private static int NUM_WORKERS = 1;
-    private static int NUM_CORES_PER_WORKER = 4;
+    private static int NUM_CORES_PER_WORKER = 24;
     private static int NUM_JOBS = NUM_WORKERS * NUM_CORES_PER_WORKER;
 
     public static ExecutionEnvironment env;

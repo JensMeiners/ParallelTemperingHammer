@@ -17,10 +17,10 @@ import java.util.stream.IntStream;
  */
 public class ParamGenerator {
 
-    private static Random r = new Random();
-    private static HashMap<Integer, Double> betas;
+    private  Random r = new Random();
+    private  HashMap<Integer, Double> betas;
 
-    public static Tuple2<Double, Integer> rand() {
+    public Tuple2<Double, Integer> rand() {
         Tuple2<Double, Integer> t = new Tuple2<>();
         // temperature
         t.f0 = r.nextDouble() * SpectralConstants.tMax + SpectralConstants.tMin;
@@ -29,11 +29,11 @@ public class ParamGenerator {
         return t;
     }
 
-    public static Integer boxedRandInt(Integer min, Integer max) {
+    public Integer boxedRandInt(Integer min, Integer max) {
         return r.nextInt(max-min+1)+min;
     }
 
-    private static void generateBetas(Integer numIDs) {
+    private void generateBetas(Integer numIDs) {
         double d = 1.0 / numIDs;
         List<Integer> ids = IntStream.rangeClosed(1, numIDs).boxed()
                 .collect(Collectors.toList());
@@ -41,7 +41,7 @@ public class ParamGenerator {
         ids.forEach(i -> betas.put(i, i*d));
     }
 
-    public static Double getBetaForID(Integer id) {
+    public Double getBetaForID(Integer id) {
         if (betas == null) generateBetas(Globals.MAX_ID - Globals.MIN_ID + 1);
         return betas.get(id - Globals.MIN_ID + 1);
     }

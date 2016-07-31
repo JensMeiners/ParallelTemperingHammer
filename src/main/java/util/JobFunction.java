@@ -19,6 +19,8 @@ public class JobFunction extends RichMapFunction<Integer, String> {
 
     @Override
     public String map(Integer id) throws Exception {
-        return new TemperingWoker(id, runtimeContext, ParamGenerator.getBetaForID(id)).run();
+        TemperingWoker temperingWoker =
+                new TemperingWoker(id, runtimeContext);
+        return temperingWoker.run();
     }
 }

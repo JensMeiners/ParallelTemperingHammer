@@ -19,7 +19,8 @@ public class JobParameters extends GlobalJobParameters {
     private HashMap<Integer, Params> pending = new HashMap<>();
 
     public JobParameters(List<Integer> ids) {
-        ids.forEach(id -> params.put(id, new Params()));
+        ParamGenerator paramGenerator = new ParamGenerator();
+        ids.forEach(id -> params.put(id, new Params(paramGenerator)));
         System.out.println("params = " + params);
     }
 
@@ -81,8 +82,8 @@ public class JobParameters extends GlobalJobParameters {
         Double beta;
         Integer ownerID;
 
-        public Params(){
-            Tuple2<Double, Integer> rand = ParamGenerator.rand();
+        public Params(ParamGenerator paramGenerator){
+            Tuple2<Double, Integer> rand = paramGenerator.rand();
             this.temperature = rand.f0;
             this.frequency = rand.f1;
         }

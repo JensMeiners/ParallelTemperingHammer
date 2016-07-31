@@ -5,9 +5,12 @@ import functions.SimulatedTempering;
 import functions.SpectralSample;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.java.tuple.Tuple2;
+import util.ElasticLogger;
 import util.JobParameters;
 import util.JobParameters.Params;
 import util.ParamGenerator;
+
+import java.net.UnknownHostException;
 
 /**
  * Created by jens on 30.07.16.
@@ -17,26 +20,36 @@ public class TemperingWoker extends Worker {
 
     private SpectralSample currentSample;
     private double beta = 1.0; // tempering temperatur
-    public static int n = 1000;
+    public static int n = 100;
     public static int n_lookup = 50;
+    private long n_persist_params = 100L;
 
-    public TemperingWoker(Integer id, RuntimeContext context, double beta, double initTemperatur, int initFrequency) {
+    private ParamGenerator paramGenerator;
+
+    private ElasticLogger logger;
+
+
+    @Deprecated
+    public TemperingWoker(Integer id, RuntimeContext context, double beta, double initTemperatur, int initFrequency) throws UnknownHostException {
         super(id, context);
         currentSample = new SpectralSample(initTemperatur, initFrequency);
         this.beta = beta;
+        this.logger = new ElasticLogger(id);
     }
 
-    public TemperingWoker(Integer id, RuntimeContext context, double beta) {
+    public TemperingWoker(Integer id, RuntimeContext context) throws UnknownHostException {
         super(id, context);
-        Tuple2<Double, Integer> p = ParamGenerator.rand();
+        paramGenerator = new ParamGenerator();
+        this.beta = paramGenerator.getBetaForID(id);
+        Tuple2<Double, Integer> p = paramGenerator.rand();
         currentSample = new SpectralSample(p.f0, p.f1);
-        this.beta = beta;
+        this.logger = new ElasticLogger(id);
     }
 
     @Override
     public String run() {
         System.out.println("start "+"id: "+getId()+" {T=" + currentSample.getTemperatur() + ", f=" + currentSample.getFrequency()+", beta="+beta+"}");
-        int t = 0;
+        long t = 0;
         while (true) {
             // obtain new Sample
             SpectralSample newSample = new SpectralSample(currentSample);
@@ -46,33 +59,47 @@ public class TemperingWoker extends Worker {
             // acceptance check
             if (Math.random() <= ratio) {
                 currentSample = newSample;
-//				System.out.println("========   NEW SAMPLE   ======");
-                //System.out.println("id: "+getId()+" {T=" + currentSample.getTemperatur() + ", f=" + currentSample.getFrequency()+"}");
+                if (t % n_persist_params == 0)
+                logger.prepareParams()
+                        .setTemperature(currentSample.getTemperatur()*1000)
+                        .setFrequency(currentSample.getFrequency())
+                        .setIteration(t)
+                        .setBeta(beta).persist();
             }
 
             // TODO logging etc
             // log iteration number, samples, acceptance rate, ...
 
-            t++;
             if(Math.random() <= 1.0/n_lookup) {
                 // look for pending accept
+                logger.prepareStatus().setLookupUpdate(true).persist();
                 if(!acceptPending()) {
                     // else
+                    logger.prepareStatus().setLookupSuggest(true).persist();
                     Params lookup = lookupSuggest();
                     if (lookup != null) {
+                        logger.prepareStatus().setTestForSwap(true).persist();
                         if (testForSwap(lookup)) {
+                            logger.prepareStatus().setAcceptSwap(true).persist();
                             acceptSwap(lookup);
                         }
                     }
+                } else {
+                    logger.prepareStatus().setAcceptPending(true).persist();
                 }
             }
-            // TODO
+
             if (Math.random() <= 1.0 / n) {
+                logger.prepareStatus().setSuggestSwap(true)
+                        .setIteration(t).persist();
                 suggestSwap();
             }
 
-            if (t > 90000) return "";
-//			System.out.println("f=" + currentSample.getFrequency() + ",  T=" + currentSample.getTemperatur());
+            t++;
+            if (t > 40000) return "id: "+getId()
+                    +" {T="+currentSample.getTemperatur()
+                    +", f="+currentSample.getFrequency()
+                    +", beta="+beta+"}";
         }
     }
 
@@ -81,7 +108,6 @@ public class TemperingWoker extends Worker {
         Params lookup = jobParameters.lookupPending(getId());
         if (lookup == null) return false;
 
-        System.out.println("worker "+getId()+ " accepts swap");
         currentSample = new SpectralSample(lookup.getTemperature(), lookup.getFrequency());
         jobParameters.delPending(getId());
         setParams(jobParameters);
@@ -130,7 +156,7 @@ public class TemperingWoker extends Worker {
     }
 
     private Integer getAdjacentWorker() {
-        return ParamGenerator.boxedRandInt(Globals.MIN_ID, Globals.MAX_ID);
+        return paramGenerator.boxedRandInt(Globals.MIN_ID, Globals.MAX_ID);
     }
 
 }
